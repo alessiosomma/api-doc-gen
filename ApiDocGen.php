@@ -111,19 +111,14 @@ class ApiDocGen{
 	private $api_base_url;
 	private $api_doc_url;
 	
-	public function __construct($api_doc_url){
-		if(APP_LOCATION === APP_LOCATION_DEVELOPMENT){
-			$p = 'http://';
-			$api_base_url = "http://nidoma.local/api";
-		}elseif(APP_LOCATION === APP_LOCATION_STAGING){
-			$p = 'https://';
-			$api_base_url = "https://test.nidoma.com/api";
-		}else{
-			$p = 'https://';
-			$api_base_url = "https://nidoma.com/api";
-		}
+	public function __construct(){}
+	
+	public function set_doc_url($api_doc_url){
+		$this->api_doc_url = $api_doc_url;
+	}
+	
+	public function set_endpoint_url($api_base_url){
 		$this->api_base_url = $api_base_url;
-		$this->api_doc_url = $p . SERVER_NAME . $api_doc_url;
 	}
 	
 	/**
@@ -239,11 +234,13 @@ class Rest{
 	/**
 	 * @param string $name
 	 * @param string $url
+	 * @param boolean $turn_to_status_200
 	 */
-	public function __construct($name, $url){
+	public function __construct($name, $url, $turn_to_status_200=false){
 		$url = strpos($url, '/') === 0 ? $url : '/'.$url;
 		$this->name = ucwords($name);
 		$this->url	= $url;
+		$this->turn_to_status_200 = $turn_to_status_200;
 	}
 	
 	/**
@@ -258,8 +255,12 @@ class Rest{
 			$pretty_body = is_array($body) ? $this->json_format(json_encode($body)) : $this->json_format(json_encode(json_decode($body)));
 		}
 		$pretty_body = $pretty_body == 'null' ? '[]' : $pretty_body;
+		$http_status_code = $code;
+		if ($this->turn_to_status_200){ // devo ricondurre tutto su 200?
+			$http_status_code = 200;
+		}
 		$response = array(
-			"status_code"		=> $code . " " . Util::get_http_status_message($code),
+			"status_code"		=> $http_status_code . " " . Util::get_http_status_message($http_status_code),
 			"content_type"		=> $content_type,
 			"date"				=> $date,
 			"body"				=> $pretty_body,
