@@ -11,6 +11,8 @@
 class ApiDocGen{
 	
 	private $rest = array();
+	private $definitions = array();
+	private $extended_error = array();
 	private $html_method_block_clean = '
 		<div id="%DIV_ID%">
 			
@@ -129,6 +131,35 @@ class ApiDocGen{
 	}
 	
 	/**
+	 * @param string $title
+	 * @param array $data
+	 */
+	public function add_definition($title, $data){
+		$this->definitions[$title] = $data;
+	}
+	
+	/**
+	 * @param string $title
+	 * @param array $extended_errors
+	 */
+	public function add_extended_errors($title, $extended_errors){
+		$keys = array();
+		$tbody = '<tbody>' . PHP_EOL;
+		foreach($extended_errors as $code => $data){
+			$tbody .= '<tr>';
+			foreach($data as $k => $v){
+				$keys[] = $k;
+				$tbody .= '<td>'.$v.'</td>';
+			}
+			$tbody .= '</tr>' . PHP_EOL;
+		}
+		$tbody .= '</tbody>' . PHP_EOL;
+		$thead = '<thead>' . PHP_EOL . '<tr>' . PHP_EOL . '<th>' . implode('</th><th>', array_unique($keys)) . '</th>' . PHP_EOL . '</tr>' . PHP_EOL . '</thead>' . PHP_EOL;
+		$table = '<br><table class="table table-bordered table-hover dtable">' . PHP_EOL . $thead . $tbody . '</table>' . PHP_EOL;
+		$this->extended_error[$title] = $table;
+	}
+	
+	/**
 	 * @return string
 	 */
 	public function generate(){
@@ -208,17 +239,63 @@ class ApiDocGen{
 			
 		}
 		
+		$extra_list = $html_definitions = '';
+		foreach($this->definitions as $title => $data){
+			$title_slug = $this->slugify($title);
+			$extra_list .= '<li><a href="' . $api_doc_base_url . '#' . $title_slug . '">' . $title . '</a></li>' . PHP_EOL;
+			$html_definitions .= '<br><hr><div id="' . $title_slug . '">'
+							. '<h3><span style="color: #4F81BD;">' . $title . ' <a title="go to table of content" href="' . $api_doc_base_url . '#apigen-extra"><i class="icon-chevron-sign-up"></i></a></span></h3>' . PHP_EOL
+							. '<ol><li>' . implode('</li>' . PHP_EOL . '<li>', $data) . '</li></ol></div>' . PHP_EOL;
+			
+		}
+		
+		foreach($this->extended_error as $title => $table){
+			$title_slug = $this->slugify($title);
+			$validation_error_list .= '<li><a href="' . $api_doc_base_url . '#' . $title_slug . '">' . $title . '</a></li>' . PHP_EOL;
+			$html_extended_error .= '<br><hr><div id="' . $title_slug . '">'
+							. '<h3><span style="color: #4F81BD;">' . $title . ' <a title="go to table of content" href="' . $api_doc_base_url . '#apigen-extra"><i class="icon-chevron-sign-up"></i></a></span></h3>' . PHP_EOL
+							. $table . "<br>" . PHP_EOL;
+		}
+		
 		$html_list = ''
 			. '<div id="table-of-contents">'
 				. '<h3><span style="color: #4F81BD;">Table of contents</span></h3>'
-				. '<ol><li>' . implode("</li>".PHP_EOL."<li>", $html_list_block) . "</li></ol>"
+				. '<ol>'
+				. '<li>' . implode("</li>".PHP_EOL."<li>", $html_list_block) . "</li>"
+				. "</ol>"
 			. "</div>"
+			. (!empty($extra_list) ? '<div id="apigen-extra">'
+				. '<h3><span style="color: #4F81BD;">Extra definitions</span></h3>'
+				. '<ol>'
+				. $extra_list
+				. '</ol>'
+			. "</div>" : '')
+			. (!empty($validation_error_list) ? '<div id="apigen-extra">'
+				. '<h3><span style="color: #4F81BD;">Extended Error Codes</span></h3>'
+				. '<ol>'
+				. $validation_error_list
+				. '</ol>'
+			. "</div>" : '')
 			. "<hr>";
 		$html_divs = implode(PHP_EOL . "<br><hr><br>", $html_div_block);
-		$content = $html_list . $html_divs;
+		
+		$content = $html_list . $html_divs . $html_definitions . $html_extended_error;
 		
 		return $content;
 		
+	}
+	
+	private function slugify($string){
+		$string = strip_tags($string); 
+        if (function_exists('iconv'))         $string = iconv('utf-8', 'us-ascii//TRANSLIT', $string);
+        if (function_exists('mb_strtolower')) $string = mb_strtolower($string);
+        else                                  $string = strtolower($string);
+        // remove accents resulting from OSX's iconv
+        $string = str_replace(array('\'', '`', '^'), '', $string);
+        // replace non letter or digits with separator
+        $string = preg_replace('/\W+/', '-', $string);
+        $string = trim($string, '-');
+        return $string;
 	}
 	
 }
@@ -396,6 +473,6 @@ class Rest{
 
 		return $new_json;
 		
-	} 
+	}
 	
 }
